@@ -29,10 +29,13 @@ export async function POST(request: NextRequest) {
 
     if (redisContent) {
       // Found in Redis
-      selectedSegment = { name: 'redis_match' }
-      variant = redisContent
+      const parsedContent = typeof redisContent === 'string' ? JSON.parse(redisContent) : redisContent
+      selectedSegment = { name: parsedContent.campaignName || 'redis_match' }
+      variant = parsedContent
     } else {
       // Step 3: Database fallback - search campaigns
+      console.log('Searching for campaign with UTMs:', { utm_campaign, utm_source, utm_content });
+      
       const dbCampaign = await prisma.campaign.findFirst({
         where: {
           OR: [
@@ -43,14 +46,25 @@ export async function POST(request: NextRequest) {
           status: 'ACTIVE'
         }
       })
+      
+      console.log('Found campaign:', dbCampaign ? { 
+        name: dbCampaign.name, 
+        utmCampaign: dbCampaign.utmCampaign, 
+        utmSource: dbCampaign.utmSource,
+        headline: dbCampaign.headline 
+      } : 'No campaign found');
 
       if (dbCampaign) {
         selectedSegment = { name: dbCampaign.name || 'db_match' }
         variant = {
+          campaignName: dbCampaign.name,
           headline: dbCampaign.headline || 'Welcome!',
           sub: dbCampaign.subheadline || 'Great to see you here',
           cta: dbCampaign.cta || 'Get Started'
         }
+
+        // Populate Redis cache for future requests
+        await redis.set(redisSearchKey, JSON.stringify(variant), { ex: CACHE_TTL });
       }
 
       if (!variant) {
