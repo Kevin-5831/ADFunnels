@@ -8,10 +8,8 @@
     
     // Configuration
     const CONFIG = {
-        apiEndpoint: '/api/v1/content',
-        eventEndpoint: '/api/v1/event',
-        retryAttempts: 3,
-        retryDelay: 1000, // ms
+        apiEndpoint: 'https://ad-saas.onrender.com/api/v1/content',
+        eventEndpoint: 'https://ad-saas.onrender.com/api/v1/event',
         debug: true
     };
 
@@ -32,12 +30,11 @@
 
 
     function extractSiteId() {
-        const script = document.querySelector('script[data-site-id]');
-        if (script) {
-            siteId = script.getAttribute('data-site-id');
-            log('Site ID found:', siteId);
+        if (window.data_site_id) {
+            siteId = window.data_site_id;
+            log('Site ID found from global variable:', siteId);
         } else {
-            error('No data-site-id attribute found on widget script');
+            error('No Site ID found. Please set: window.data_site_id="your_site_id"');
         }
         return siteId;
     }
@@ -69,8 +66,8 @@
     }
 
 
-    // API calls with retry logic
-    async function callAPI(url, data, retryCount = 0) {
+    // API calls
+    async function callAPI(url, data) {
         try {
             log(`Calling API: ${url}`, data);
             
@@ -91,13 +88,7 @@
             log('API response:', result);
             return result;
         } catch (err) {
-            error(`API call failed (attempt ${retryCount + 1}):`, err);
-            
-            if (retryCount < CONFIG.retryAttempts - 1) {
-                log(`Retrying in ${CONFIG.retryDelay}ms...`);
-                await new Promise(resolve => setTimeout(resolve, CONFIG.retryDelay));
-                return callAPI(url, data, retryCount + 1);
-            }
+            error(`API call failed:`, err);
             throw err;
         }
     }
@@ -180,33 +171,7 @@
         });
 
 
-        // Update bullet points if available
-        if (blocks.bullets && Array.isArray(blocks.bullets)) {
-            const bulletElements = document.querySelectorAll('[data-copy-element="bullets"]');
-            bulletElements.forEach(element => {
-                if (element.tagName === 'UL' || element.tagName === 'OL') {
-                    element.innerHTML = blocks.bullets.map(bullet => `<li>${bullet}</li>`).join('');
-                } else {
-                    element.innerHTML = blocks.bullets.join('<br>');
-                }
-                element.classList.add('copyai-updated');
-                elementsUpdated++;
-                log('Updated bullets:', blocks.bullets);
-            });
-        }
-
         log(`Total elements updated: ${elementsUpdated}`);
-
-        // Trigger custom event
-        const event = new CustomEvent('copyai:updated', {
-            detail: {
-                segment: currentSegment,
-                blocks: blocks,
-                elementsUpdated: elementsUpdated
-            }
-        });
-        document.dispatchEvent(event);
-
         return elementsUpdated;
     }
 
@@ -287,16 +252,6 @@
 
         // Set up event tracking
         setupEventTracking();
-
-        // Set global debug object
-        window.copyAIDebug = {
-            currentSegment,
-            siteId,
-            trackEvent,
-            getURLParameters,
-            log,
-            CONFIG
-        };
 
         log('Widget initialized successfully');
     }
