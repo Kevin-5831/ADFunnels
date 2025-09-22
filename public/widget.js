@@ -8,8 +8,8 @@
     
     // Configuration
     const CONFIG = {
-        apiEndpoint: 'https://ad-saas-one.vercel.app/api/v1/content',
-        eventEndpoint: 'https://ad-saas-one.vercel.app/api/v1/event',
+        apiEndpoint: 'https://adfunnels-psi.vercel.app/api/v1/content',
+        eventEndpoint: 'https://adfunnels-psi.vercel.app/api/v1/event',
         debug: true
     };
 
@@ -152,7 +152,7 @@
             '.custome-headline': { text: blocks.headline, type: 'headline' },
             '.custome-subheadline': { text: blocks.sub, type: 'subheadline' },
             '.custome-ctaButton': { text: blocks.cta, type: 'button' },
-            '.custom-purchaseButton': { text: blocks.cta, type: 'button' }
+            '.custome-purchaseButton': { text: blocks.cta, type: 'button' }
         };
 
         Object.entries(cssMappings).forEach(([selector, config]) => {
@@ -163,7 +163,13 @@
                 const textElement = findTextElement(parentElement, config.type);
                 if (textElement) {
                     const oldText = textElement.textContent || textElement.innerHTML;
-                    textElement.textContent = config.text;
+                    // Check if there's a styled span to preserve styling
+                    const styledSpan = textElement.querySelector('span[style]');
+                    if (styledSpan) {
+                        styledSpan.textContent = config.text;
+                    } else {
+                        textElement.textContent = config.text;
+                    }
                     parentElement.classList.add('copyai-updated');
                     elementsUpdated++;
                     log(`Updated element: ${selector}`, `"${oldText}" → "${config.text}"`);
@@ -208,7 +214,7 @@
             let depth = 0;
 
             while (currentElement && depth < maxDepth) {
-                if (currentElement.matches && currentElement.matches('.custom-purchaseButton')) {
+                if (currentElement.matches && currentElement.matches('.custome-purchaseButton')) {
                     trackEvent('PURCHASE_CLICK');
                     return;
                 }
@@ -245,7 +251,7 @@
                 if (updated > 0) {
                     log(`Successfully personalized ${updated} elements for segment: ${currentSegment}`);
                 } else {
-                    log('No elements found to personalize. Make sure your HTML has CSS classes: custome-headline, custome-subheadline, custome-ctaButton, custom-purchaseButton');
+                    log('No elements found to personalize. Make sure your HTML has CSS classes: custome-headline, custome-subheadline, custome-ctaButton, custome-purchaseButton');
                 }
             } else {
                 log('No personalized content received, keeping default content');
